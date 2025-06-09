@@ -13,6 +13,7 @@ import org.spongepowered.asm.mixin.injection.At;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -23,13 +24,16 @@ public class TagGroupLoaderMixin {
             method = "resolveAll(Lnet/minecraft/registry/tag/TagEntry$ValueGetter;Ljava/util/List;)Lcom/mojang/datafixers/util/Either;",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/registry/tag/TagEntry;resolve(Lnet/minecraft/registry/tag/TagEntry$ValueGetter;Ljava/util/function/Consumer;)Z", ordinal = 0)
     )
-    private <T> boolean exclusionsLib$removeEntry(TagEntry entry, TagEntry.ValueGetter<T> valueGetter,  Consumer<T> idConsumer, Operation<Boolean> original, TagEntry.ValueGetter<T> valueGetter1, List<TagGroupLoader.TrackedEntry> entries, @Local LocalRef<ImmutableSet.Builder<T>> builder)
+    private <T> boolean exclusionsLib$removeEntry(TagEntry entry, TagEntry.ValueGetter<T> valueGetter,  Consumer<T> idConsumer, Operation<Boolean> original, TagEntry.ValueGetter<T> valueGetter1, List<TagGroupLoader.TrackedEntry> entries, @Local LocalRef<LinkedHashSet<T>> builder)
     {
+        //boolean builderIsBuilder = builder.get() instanceof ImmutableSet.Builder<?>;
+
+
         TagEntryExclusionHolder holder = (TagEntryExclusionHolder) entry;
         if (!holder.exclusionsLib$isExcluded()) return original.call(entry, valueGetter, idConsumer);
 
 	    ExclusionsLib.LOGGER.info("[Exclusions Lib] The Following Tag has been detected: {}", entry);
-        List<T> list = new ArrayList<>(builder.get().build());
+        List<T> list = new ArrayList<>(builder.get());//builderIsBuilder?((ImmutableSet.Builder<T>)builder.get()).build(): ((LinkedHashSet<T>) builder.get()));
         Identifier id = holder.exclusionsLib$getId();
         boolean required = holder.exclusionsLib$isRequired();
         if (holder.exclusionsLib$isTag())
@@ -44,7 +48,9 @@ public class TagGroupLoaderMixin {
             if (object == null) return !required;
             list.remove(object);
         }
-        builder.set(new ImmutableSet.Builder<T>().addAll(list));
+
+        //if(builderIsBuilder) ((LocalRef<ImmutableSet.Builder<T>>)builder).set(new ImmutableSet.Builder<T>().addAll(list));
+        builder.set(new LinkedHashSet<>(list));
         return true;
     }
 
